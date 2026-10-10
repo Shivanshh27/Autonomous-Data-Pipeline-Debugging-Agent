@@ -53,3 +53,19 @@ def test_handles_empty_history(tmp_path):
     assert result["total_runs"] == 0
     assert result["latest_status"] is None
     assert result["failure_pattern"] == "NO_HISTORY"
+
+def test_repeated_failures_include_recommended_action(tmp_path):
+    db_path = str(tmp_path / "history.db")
+
+    for _ in range(3):
+        save_pipeline_run(
+            status="FAILED",
+            total_failed_checks=1,
+            dataset_path="data/raw/customers.csv",
+            db_path=db_path
+        )
+
+    result = analyze_pipeline_history(db_path)
+
+    assert result["failure_pattern"] == "REPEATED_FAILURE"
+    assert "Investigate recurring failures" in result["recommended_action"]

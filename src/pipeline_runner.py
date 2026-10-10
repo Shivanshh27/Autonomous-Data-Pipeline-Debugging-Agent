@@ -168,6 +168,7 @@ def run_pipeline(file_path):
     logger.info(f"JSON report generated: {report_path}")
 
     print(f"\n[INFO] JSON report saved to: {report_path}")
+    
     print("\n--- PIPELINE HISTORY ANALYSIS ---")
     print(f"Total Runs: {history_analysis['total_runs']}")
     print(f"Latest Status: {history_analysis['latest_status']}")
@@ -176,7 +177,10 @@ def run_pipeline(file_path):
         f"{history_analysis['consecutive_failures']}"
     )
     print(f"Failure Pattern: {history_analysis['failure_pattern']}")
-
+    print(
+        f"Recommended Action: "
+        f"{history_analysis['recommended_action']}"
+    )
     logger.info(f"Pipeline run saved to database. Run ID: {run_id}")
 
     print(f"[INFO] Pipeline run saved to database. Run ID: {run_id}")

@@ -1,9 +1,9 @@
 {
     "project": "Autonomous Data Pipeline Debugging Agent",
-    "generated_at": "2026-10-10T23:33:52.085839+00:00",
-    "status": "FAILED",
-    "run_id": 32,
-    "total_failed_checks": 1,
+    "generated_at": "2026-10-10T23:42:53.814763+00:00",
+    "status": "PASSED",
+    "run_id": 51,
+    "total_failed_checks": 0,
     "schema_results": [
         {
             "check": "data_type",
@@ -33,10 +33,10 @@
     "missing_results": [
         {
             "column": "customer_id",
-            "missing_count": 2,
-            "missing_percentage": 40.0,
+            "missing_count": 0,
+            "missing_percentage": 0.0,
             "threshold": 5.0,
-            "status": "FAILED"
+            "status": "PASSED"
         },
         {
             "column": "age",
@@ -53,24 +53,13 @@
             "status": "PASSED"
         }
     ],
-    "diagnoses": [
-        {
-            "failure_type": "MISSING_VALUES",
-            "column": "customer_id",
-            "missing_count": 2,
-            "missing_percentage": 40.0,
-            "threshold": 5.0,
-            "severity": "HIGH",
-            "likely_cause": "Customer identifiers may be missing in the source data or may have been lost during an upstream transformation.",
-            "recommended_action": "Inspect the source records and upstream transformation steps. Recover identifiers from the authoritative source if possible.",
-            "automatic_recovery": false
-        }
-    ],
+    "diagnoses": [],
     "history_analysis": {
-        "total_runs": 32,
-        "latest_status": "FAILED",
-        "consecutive_failures": 1,
-        "failure_pattern": "RECENT_FAILURE"
+        "total_runs": 51,
+        "latest_status": "PASSED",
+        "consecutive_failures": 0,
+        "failure_pattern": "LATEST_RUN_PASSED",
+        "recommended_action": "No immediate action required. Continue monitoring pipeline runs."
     },
     "error": null
 }
