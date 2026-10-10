@@ -159,3 +159,74 @@ def test_pipeline_logs_execution_events(tmp_path, monkeypatch):
     assert "Schema validation completed" in content
     assert "Missing-value validation failed" in content
     assert "JSON report generated" in content
+
+def test_pipeline_saves_run_to_database(tmp_path, monkeypatch):
+    import pandas as pd
+
+    from src import pipeline_runner
+    from src.failure_history import get_pipeline_history
+
+    df = pd.DataFrame({
+        "customer_id": ["C101", None, "C103"],
+        "age": [22, 25, 24],
+        "city": ["Bhopal", "Indore", "Jabalpur"]
+    })
+
+    input_path = tmp_path / "customers.csv"
+    df.to_csv(input_path, index=False)
+
+    # Is test ka output temporary directory mein rahega.
+    monkeypatch.chdir(tmp_path)
+
+    result = pipeline_runner.run_pipeline(str(input_path))
+
+    history = get_pipeline_history()
+
+    assert result["status"] == "FAILED"
+    assert "run_id" in result
+    assert len(history) == 1
+    assert history[0]["run_id"] == result["run_id"]
+    assert history[0]["status"] == "FAILED"
+    assert history[0]["total_failed_checks"] == 1
+    
+def test_pipeline_includes_history_analysis(tmp_path):
+    import pandas as pd
+    from src.pipeline_runner import run_pipeline
+
+    csv_file = tmp_path / "customers.csv"
+
+    df = pd.DataFrame({
+        "customer_id": ["C101", "C102"],
+        "age": [22, 25],
+        "city": ["Bhopal", "Indore"]
+    })
+
+    df.to_csv(csv_file, index=False)
+
+    result = run_pipeline(str(csv_file))
+
+    assert "history_analysis" in result
+    assert result["history_analysis"]["total_runs"] >= 1
+    assert result["history_analysis"]["latest_status"] == "PASSED"
+    assert result["history_analysis"]["failure_pattern"] == "LATEST_RUN_PASSED"
+
+def test_json_report_includes_history_analysis(tmp_path):
+    import json
+    import pandas as pd
+    from src.pipeline_runner import run_pipeline
+
+    csv_file = tmp_path / "customers.csv"
+    report_file = tmp_path / "report.json"
+
+    df = pd.DataFrame({
+        "customer_id": ["C101", "C102"],
+        "age": [22, 25],
+        "city": ["Bhopal", "Indore"]
+    })
+
+    df.to_csv(csv_file, index=False)
+
+    # Check the actual report path used by your pipeline.
+    result = run_pipeline(str(csv_file))
+
+    assert "history_analysis" in result

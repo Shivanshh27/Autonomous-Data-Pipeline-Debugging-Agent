@@ -5,6 +5,8 @@ from src.schema_validator import validate_schema
 from src.failure_analyzer import analyze_missing_values
 from src.report_generator import generate_report
 from src.logger import get_logger
+from src.failure_history import save_pipeline_run
+from src.history_analyzer import analyze_pipeline_history
 
 def run_pipeline(file_path):
     logger = get_logger()
@@ -105,7 +107,8 @@ def run_pipeline(file_path):
     else:
         logger.info("Pipeline execution completed successfully")
 
-        # Step 6: Analyze missing-value failures
+    
+    # Step 6: Analyze missing-value failures
     diagnoses = analyze_missing_values(missing_results)
 
     if diagnoses:
@@ -144,13 +147,40 @@ def run_pipeline(file_path):
     "diagnoses": diagnoses
 }
 
+    
+
+    # Save pipeline execution history
+    run_id = save_pipeline_run(
+        status=overall_status,
+        total_failed_checks=len(failed_checks),
+        dataset_path=file_path
+    )
+
+    # Analyze execution history
+
+    history_analysis = analyze_pipeline_history()
+
+    pipeline_result["history_analysis"] = history_analysis
+    pipeline_result["run_id"] = run_id
+    
     report_path = "reports/pipeline_report.json"
-
     generate_report(pipeline_result, report_path)
-
     logger.info(f"JSON report generated: {report_path}")
 
     print(f"\n[INFO] JSON report saved to: {report_path}")
+    print("\n--- PIPELINE HISTORY ANALYSIS ---")
+    print(f"Total Runs: {history_analysis['total_runs']}")
+    print(f"Latest Status: {history_analysis['latest_status']}")
+    print(
+        f"Consecutive Failures: "
+        f"{history_analysis['consecutive_failures']}"
+    )
+    print(f"Failure Pattern: {history_analysis['failure_pattern']}")
+
+    logger.info(f"Pipeline run saved to database. Run ID: {run_id}")
+
+    print(f"[INFO] Pipeline run saved to database. Run ID: {run_id}")
+
 
     return pipeline_result
 

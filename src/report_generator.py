@@ -8,12 +8,14 @@ def generate_report(pipeline_result, output_path):
         "project": "Autonomous Data Pipeline Debugging Agent",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": pipeline_result["status"],
+        "run_id": pipeline_result.get("run_id"),
         "total_failed_checks": len(
             pipeline_result.get("failed_checks", [])
         ),
         "schema_results": pipeline_result.get("schema_results", []),
         "missing_results": pipeline_result.get("missing_results", []),
         "diagnoses": pipeline_result.get("diagnoses", []),
+        "history_analysis": pipeline_result.get("history_analysis"),
         "error": pipeline_result.get("error")
     }
 
