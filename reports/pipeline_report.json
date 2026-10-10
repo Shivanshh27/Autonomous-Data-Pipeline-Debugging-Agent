@@ -1,0 +1,57 @@
+{
+    "project": "Autonomous Data Pipeline Debugging Agent",
+    "generated_at": "2026-10-10T23:09:31.302227+00:00",
+    "status": "PASSED",
+    "total_failed_checks": 0,
+    "schema_results": [
+        {
+            "check": "data_type",
+            "column": "customer_id",
+            "expected": "str",
+            "actual": "str",
+            "status": "PASSED",
+            "message": "Column 'customer_id' has the expected data type."
+        },
+        {
+            "check": "data_type",
+            "column": "age",
+            "expected": "int64",
+            "actual": "int64",
+            "status": "PASSED",
+            "message": "Column 'age' has the expected data type."
+        },
+        {
+            "check": "data_type",
+            "column": "city",
+            "expected": "str",
+            "actual": "str",
+            "status": "PASSED",
+            "message": "Column 'city' has the expected data type."
+        }
+    ],
+    "missing_results": [
+        {
+            "column": "customer_id",
+            "missing_count": 0,
+            "missing_percentage": 0.0,
+            "threshold": 5.0,
+            "status": "PASSED"
+        },
+        {
+            "column": "age",
+            "missing_count": 0,
+            "missing_percentage": 0.0,
+            "threshold": 5.0,
+            "status": "PASSED"
+        },
+        {
+            "column": "city",
+            "missing_count": 0,
+            "missing_percentage": 0.0,
+            "threshold": 5.0,
+            "status": "PASSED"
+        }
+    ],
+    "diagnoses": [],
+    "error": null
+}

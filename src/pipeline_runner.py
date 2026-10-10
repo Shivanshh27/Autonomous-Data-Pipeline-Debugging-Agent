@@ -2,16 +2,25 @@ import pandas as pd
 
 from src.data_profiler import validate_missing_values
 from src.schema_validator import validate_schema
-
+from src.failure_analyzer import analyze_missing_values
+from src.report_generator import generate_report
+from src.logger import get_logger
 
 def run_pipeline(file_path):
+    logger = get_logger()
+    logger.info("Pipeline execution started")
+    logger.info(f"Input dataset: {file_path}")
+
     print("=" * 70)
-    print("OPSPILOT AI - DATA PIPELINE VALIDATION")
+    print("AUTONOMOUS DATA PIPELINE DEBUGGING AGENT")
     print("=" * 70)
 
     # Step 1: Load dataset
     try:
         df = pd.read_csv(file_path)
+        logger.info(
+            f"Dataset loaded successfully: {len(df)} rows, {len(df.columns)} columns"
+        )
         print(f"\n[INFO] Dataset loaded successfully: {file_path}")
         print(f"[INFO] Rows: {len(df)}, Columns: {len(df.columns)}")
 
@@ -39,6 +48,11 @@ def run_pipeline(file_path):
     # Step 3: Run schema validation
     schema_results = validate_schema(df, expected_schema)
 
+    logger.info("Schema validation completed")
+
+    if any(result["status"] == "FAILED" for result in schema_results):
+        logger.error("Schema validation failed")
+
     print("\n--- SCHEMA VALIDATION ---")
 
     for result in schema_results:
@@ -51,6 +65,10 @@ def run_pipeline(file_path):
 
     # Step 4: Run missing-value validation
     missing_results = validate_missing_values(df, threshold=5.0)
+    logger.info("Missing-value validation completed")
+
+    if any(result["status"] == "FAILED" for result in missing_results):
+        logger.error("Missing-value validation failed")
 
     print("\n--- MISSING VALUE VALIDATION ---")
 
@@ -82,17 +100,59 @@ def run_pipeline(file_path):
     else:
         overall_status = "PASSED"
 
+    if overall_status == "FAILED":
+        logger.error("Pipeline execution completed with failures")
+    else:
+        logger.info("Pipeline execution completed successfully")
+
+        # Step 6: Analyze missing-value failures
+    diagnoses = analyze_missing_values(missing_results)
+
+    if diagnoses:
+        print("\n--- FAILURE DIAGNOSIS ---")
+
+        for diagnosis in diagnoses:
+            print(f"\nFailure Type: {diagnosis['failure_type']}")
+            print(f"Column: {diagnosis['column']}")
+            print(f"Severity: {diagnosis['severity']}")
+            print(
+                f"Missing Percentage: "
+                f"{diagnosis['missing_percentage']}%"
+            )
+
+            print(f"\nLikely Cause:")
+            print(diagnosis["likely_cause"])
+
+            print(f"\nRecommended Action:")
+            print(diagnosis["recommended_action"])
+
+            print(
+                f"\nAutomatic Recovery: "
+                f"{'ENABLED' if diagnosis['automatic_recovery'] else 'DISABLED'}"
+            )
+
     print("\n" + "=" * 70)
     print(f"OVERALL PIPELINE STATUS: {overall_status}")
     print(f"Total failed checks: {len(failed_checks)}")
     print("=" * 70)
 
-    return {
-        "status": overall_status,
-        "schema_results": schema_results,
-        "missing_results": missing_results,
-        "failed_checks": failed_checks
-    }
+    pipeline_result = {
+    "status": overall_status,
+    "schema_results": schema_results,
+    "missing_results": missing_results,
+    "failed_checks": failed_checks,
+    "diagnoses": diagnoses
+}
+
+    report_path = "reports/pipeline_report.json"
+
+    generate_report(pipeline_result, report_path)
+
+    logger.info(f"JSON report generated: {report_path}")
+
+    print(f"\n[INFO] JSON report saved to: {report_path}")
+
+    return pipeline_result
 
 
 if __name__ == "__main__":
