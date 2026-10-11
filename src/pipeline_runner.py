@@ -10,7 +10,8 @@ from src.history_analyzer import analyze_pipeline_history
 from src.recovery_engine import (
     recover_missing_values,
     validate_recovery,
-    save_recovered_data
+    save_recovered_data,
+    decide_recovery_action
 )
 def run_pipeline(file_path):
     logger = get_logger()
@@ -151,18 +152,55 @@ def run_pipeline(file_path):
     # Step 7: Run recovery only when configured rules can apply
     recovery_result = {
         "attempted": False,
+        "decisions": [],
         "recovery_log": [],
         "validation": None,
         "output_path": None
     }
 
-    if any(
-        column in df.columns and df[column].isna().any()
-        for column in recovery_rules
-    ):
+    for column, rule in recovery_rules.items():
+        if column not in df.columns:
+            decision = decide_recovery_action(
+                column=column,
+                missing_count=1,
+                recovery_rules=recovery_rules,
+                schema_valid=False
+            )
+
+            recovery_result["decisions"].append(decision)
+
+            print(
+                f"\nRecovery Decision for '{column}': "
+                f"{decision['decision']}"
+            )
+
+            continue
+
+        missing_count = int(df[column].isna().sum())
+
+        decision = decide_recovery_action(
+            column=column,
+            missing_count=missing_count,
+            recovery_rules=recovery_rules,
+            schema_valid=not any(
+                result["status"] == "FAILED"
+                for result in schema_results
+            )
+        )
+
+        recovery_result["decisions"].append(decision)
+
+        print(
+            f"\nRecovery Decision for '{column}': "
+            f"{decision['decision']}"
+        )
+
+        if decision["decision"] != "ALLOW_RECOVERY":
+            continue
+
         recovered_df, recovery_log = recover_missing_values(
             df,
-            recovery_rules
+            {column: rule}
         )
 
         validation_result = validate_recovery(df, recovered_df)
@@ -170,19 +208,18 @@ def run_pipeline(file_path):
         output_path = "data/processed/customers_recovered.csv"
         saved_path = save_recovered_data(recovered_df, output_path)
 
-        recovery_result = {
-            "attempted": True,
-            "recovery_log": recovery_log,
-            "validation": validation_result,
-            "output_path": saved_path
-        }
+        recovery_result["attempted"] = True
+        recovery_result["recovery_log"].extend(recovery_log)
+        recovery_result["validation"] = validation_result
+        recovery_result["output_path"] = saved_path
 
         logger.info("Recovery execution completed")
-        print("\n--- RECOVERY RESULT ---")
-        print(f"Recovery Log: {recovery_log}")
-        print(f"Validation: {validation_result}")
-        print(f"Recovered Dataset: {saved_path}")
 
+    if recovery_result["attempted"]:
+        print("\n--- RECOVERY RESULT ---")
+        print(f"Recovery Log: {recovery_result['recovery_log']}")
+        print(f"Validation: {recovery_result['validation']}")
+        print(f"Recovered Dataset: {recovery_result['output_path']}")
 
     pipeline_result = {
     "status": overall_status,

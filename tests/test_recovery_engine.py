@@ -1,10 +1,11 @@
 import pandas as pd
-
+from src.recovery_engine import decide_recovery_action
 from src.recovery_engine import (
     recover_missing_values,
     validate_recovery
 )
 from src.recovery_engine import save_recovered_data
+
 def test_fills_missing_values_without_modifying_original():
     df = pd.DataFrame({
         "city": ["Bhopal", None, "Indore"]
@@ -134,3 +135,96 @@ def test_saves_recovered_data_without_changing_original(tmp_path):
     assert saved_df["city"].isna().sum() == 0
     assert saved_df.loc[1, "city"] == "Unknown"
     assert pd.isna(unchanged_original.loc[1, "city"])
+
+
+def test_allows_recovery_with_valid_rule():
+    result = decide_recovery_action(
+        column="city",
+        missing_count=1,
+        recovery_rules={
+            "city": {
+                "strategy": "fill_value",
+                "value": "Unknown"
+            }
+        },
+        schema_valid=True
+    )
+
+    assert result["decision"] == "ALLOW_RECOVERY"
+
+
+def test_blocks_recovery_when_schema_is_invalid():
+    result = decide_recovery_action(
+        column="city",
+        missing_count=1,
+        recovery_rules={
+            "city": {
+                "strategy": "fill_value",
+                "value": "Unknown"
+            }
+        },
+        schema_valid=False
+    )
+
+    assert result["decision"] == "BLOCKED"
+
+
+def test_requires_manual_intervention_without_rule():
+    result = decide_recovery_action(
+        column="customer_id",
+        missing_count=2,
+        recovery_rules={},
+        schema_valid=True
+    )
+
+    assert result["decision"] == "MANUAL_INTERVENTION"
+
+
+def test_returns_no_action_when_no_values_are_missing():
+    result = decide_recovery_action(
+        column="city",
+        missing_count=0,
+        recovery_rules={
+            "city": {
+                "strategy": "fill_value",
+                "value": "Unknown"
+            }
+        },
+        schema_valid=True
+    )
+
+    assert result["decision"] == "NO_ACTION"
+
+
+def test_blocks_unsupported_recovery_strategy():
+    result = decide_recovery_action(
+        column="city",
+        missing_count=1,
+        recovery_rules={
+            "city": {
+                "strategy": "unknown_strategy",
+                "value": "Unknown"
+            }
+        },
+        schema_valid=True
+    )
+
+    assert result["decision"] == "BLOCKED"
+def test_blocks_recovery_when_required_column_is_missing():
+    recovery_rules = {
+        "city": {
+            "strategy": "fill_value",
+            "value": "Unknown"
+        }
+    }
+
+    decision = decide_recovery_action(
+        column="city",
+        missing_count=0,
+        recovery_rules=recovery_rules,
+        schema_valid=False
+    )
+
+    assert decision["decision"] == "BLOCKED"
+    assert decision["column"] == "city"
+    assert decision["reason"] == "Schema validation failed"

@@ -1,7 +1,54 @@
 import pandas as pd
 from pathlib import Path
 
+def decide_recovery_action(
+    column,
+    missing_count,
+    recovery_rules,
+    schema_valid
+):
+    if not schema_valid:
+        return {
+            "decision": "BLOCKED",
+            "column": column,
+            "reason": "Schema validation failed"
+        }
 
+    if missing_count == 0:
+        return {
+            "decision": "NO_ACTION",
+            "column": column,
+            "reason": "No missing values found"
+        }
+
+    if column not in recovery_rules:
+        return {
+            "decision": "MANUAL_INTERVENTION",
+            "column": column,
+            "reason": "No recovery rule configured for this column"
+        }
+
+    rule = recovery_rules[column]
+
+    if rule.get("strategy") != "fill_value":
+        return {
+            "decision": "BLOCKED",
+            "column": column,
+            "reason": "Unsupported recovery strategy"
+        }
+
+    if "value" not in rule:
+        return {
+            "decision": "BLOCKED",
+            "column": column,
+            "reason": "Recovery rule has no fill value"
+        }
+
+    return {
+        "decision": "ALLOW_RECOVERY",
+        "column": column,
+        "reason": "A supported recovery rule is configured"
+    }
 def save_recovered_data(df, output_path):
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -102,3 +149,22 @@ def recover_missing_values(df, recovery_rules):
             })
 
     return recovered_df, recovery_log
+
+def test_blocks_recovery_when_required_column_is_missing():
+    recovery_rules = {
+        "city": {
+            "strategy": "fill_value",
+            "value": "Unknown"
+        }
+    }
+
+    decision = decide_recovery_action(
+        column="city",
+        missing_count=0,
+        recovery_rules=recovery_rules,
+        schema_valid=False
+    )
+
+    assert decision["decision"] == "BLOCKED"
+    assert decision["column"] == "city"
+    assert decision["reason"] == "Schema validation failed"
