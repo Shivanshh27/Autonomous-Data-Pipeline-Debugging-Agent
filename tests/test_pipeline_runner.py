@@ -230,3 +230,71 @@ def test_json_report_includes_history_analysis(tmp_path):
     result = run_pipeline(str(csv_file))
 
     assert "history_analysis" in result
+
+def test_pipeline_recovers_missing_city_and_preserves_original(
+    tmp_path, monkeypatch
+):
+    import json
+    import pandas as pd
+
+    from src.pipeline_runner import run_pipeline
+
+    # Arrange: Create a dataset with one missing city.
+    df = pd.DataFrame({
+        "customer_id": ["C101", None, "C103"],
+        "age": [22, 25, 24],
+        "city": [None, "Indore", "Jabalpur"]
+    })
+
+    input_path = tmp_path / "customers.csv"
+    df.to_csv(input_path, index=False)
+
+    # Keep reports, logs, database and recovered CSV inside tmp_path.
+    monkeypatch.chdir(tmp_path)
+
+    # Act: Run the pipeline.
+    result = run_pipeline(str(input_path))
+
+    # Check recovery was attempted.
+    recovery = result["recovery_result"]
+
+    assert recovery["attempted"] is True
+    assert recovery["output_path"] == (
+        "data\\processed\\customers_recovered.csv"
+    )
+
+    # Check recovery improved data quality.
+    assert recovery["validation"]["status"] == "IMPROVED"
+    assert recovery["validation"]["schema_valid"] is True
+    assert recovery["validation"]["original_missing_values"] == 2
+    assert recovery["validation"]["recovered_missing_values"] == 1
+    assert recovery["validation"]["remaining_missing_values"] == 1
+
+    # Check recovered CSV exists and contains the replacement.
+    recovered_path = tmp_path / "data" / "processed" / (
+        "customers_recovered.csv"
+    )
+
+    assert recovered_path.exists()
+
+    recovered_df = pd.read_csv(recovered_path)
+
+    assert recovered_df.loc[0, "city"] == "Unknown"
+    assert recovered_df["customer_id"].isna().sum() == 1
+
+    # Check original input remains unchanged.
+    original_df = pd.read_csv(input_path)
+
+    assert original_df["city"].isna().sum() == 1
+    assert original_df["customer_id"].isna().sum() == 1
+
+    # Check recovery results appear in the JSON report.
+    report_path = tmp_path / "reports" / "pipeline_report.json"
+
+    assert report_path.exists()
+
+    with report_path.open("r", encoding="utf-8") as file:
+        report = json.load(file)
+
+    assert report["recovery_result"]["attempted"] is True
+    assert report["recovery_result"]["validation"]["status"] == "IMPROVED"

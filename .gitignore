@@ -43,3 +43,12 @@ logs/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+
+# Generated pipeline artifacts
+data/processed/*.db
+data/processed/*_recovered.csv
+data/processed/*_recovery_test.csv
+
+# Generated reports
+reports/*.json

@@ -7,7 +7,11 @@ from src.report_generator import generate_report
 from src.logger import get_logger
 from src.failure_history import save_pipeline_run
 from src.history_analyzer import analyze_pipeline_history
-
+from src.recovery_engine import (
+    recover_missing_values,
+    validate_recovery,
+    save_recovered_data
+)
 def run_pipeline(file_path):
     logger = get_logger()
     logger.info("Pipeline execution started")
@@ -46,7 +50,12 @@ def run_pipeline(file_path):
         "age": "int64",
         "city": "str"
     }
-
+    recovery_rules = {
+    "city": {
+        "strategy": "fill_value",
+        "value": "Unknown"
+    }
+}
     # Step 3: Run schema validation
     schema_results = validate_schema(df, expected_schema)
 
@@ -138,13 +147,50 @@ def run_pipeline(file_path):
     print(f"OVERALL PIPELINE STATUS: {overall_status}")
     print(f"Total failed checks: {len(failed_checks)}")
     print("=" * 70)
+    
+    # Step 7: Run recovery only when configured rules can apply
+    recovery_result = {
+        "attempted": False,
+        "recovery_log": [],
+        "validation": None,
+        "output_path": None
+    }
+
+    if any(
+        column in df.columns and df[column].isna().any()
+        for column in recovery_rules
+    ):
+        recovered_df, recovery_log = recover_missing_values(
+            df,
+            recovery_rules
+        )
+
+        validation_result = validate_recovery(df, recovered_df)
+
+        output_path = "data/processed/customers_recovered.csv"
+        saved_path = save_recovered_data(recovered_df, output_path)
+
+        recovery_result = {
+            "attempted": True,
+            "recovery_log": recovery_log,
+            "validation": validation_result,
+            "output_path": saved_path
+        }
+
+        logger.info("Recovery execution completed")
+        print("\n--- RECOVERY RESULT ---")
+        print(f"Recovery Log: {recovery_log}")
+        print(f"Validation: {validation_result}")
+        print(f"Recovered Dataset: {saved_path}")
+
 
     pipeline_result = {
     "status": overall_status,
     "schema_results": schema_results,
     "missing_results": missing_results,
     "failed_checks": failed_checks,
-    "diagnoses": diagnoses
+    "diagnoses": diagnoses,
+    "recovery_result": recovery_result
 }
 
     
@@ -190,4 +236,4 @@ def run_pipeline(file_path):
 
 
 if __name__ == "__main__":
-    run_pipeline("data/raw/customers.csv")
+    run_pipeline("data/processed/customers_recovery_test.csv")

@@ -15,6 +15,7 @@ def generate_report(pipeline_result, output_path):
         "schema_results": pipeline_result.get("schema_results", []),
         "missing_results": pipeline_result.get("missing_results", []),
         "diagnoses": pipeline_result.get("diagnoses", []),
+        "recovery_result": pipeline_result.get("recovery_result"),
         "history_analysis": pipeline_result.get("history_analysis"),
         "error": pipeline_result.get("error")
     }
