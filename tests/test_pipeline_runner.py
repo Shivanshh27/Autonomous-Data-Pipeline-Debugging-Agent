@@ -298,3 +298,59 @@ def test_pipeline_recovers_missing_city_and_preserves_original(
 
     assert report["recovery_result"]["attempted"] is True
     assert report["recovery_result"]["validation"]["status"] == "IMPROVED"
+
+def test_pipeline_blocks_recovery_when_required_column_is_missing(
+    tmp_path,
+    monkeypatch
+):
+    # Arrange: Create a dataset without the required city column.
+    input_path = tmp_path / "customers_missing_city.csv"
+
+    df = pd.DataFrame({
+        "customer_id": ["C101", "C102"],
+        "age": [22, 25]
+    })
+
+    df.to_csv(input_path, index=False)
+
+    # Keep generated artifacts inside the temporary directory.
+    monkeypatch.chdir(tmp_path)
+
+    # Act: Run the pipeline.
+    result = run_pipeline(str(input_path))
+
+    # Assert: Original pipeline should fail schema validation.
+    assert result["status"] == "FAILED"
+
+    recovery = result["recovery_result"]
+
+    # Recovery must not execute with an invalid schema.
+    assert recovery["attempted"] is False
+
+    # The missing city column must have a recorded decision.
+    city_decisions = [
+        decision
+        for decision in recovery["decisions"]
+        if decision["column"] == "city"
+    ]
+
+    assert len(city_decisions) == 1
+    assert city_decisions[0]["decision"] == "BLOCKED"
+    assert city_decisions[0]["reason"] == "Schema validation failed"
+
+    # Verify the decision is also included in the JSON report.
+    report_path = tmp_path / "reports" / "pipeline_report.json"
+
+    assert report_path.exists()
+
+    with report_path.open("r", encoding="utf-8") as file:
+        report = json.load(file)
+
+    report_city_decisions = [
+        decision
+        for decision in report["recovery_result"]["decisions"]
+        if decision["column"] == "city"
+    ]
+
+    assert len(report_city_decisions) == 1
+    assert report_city_decisions[0]["decision"] == "BLOCKED"

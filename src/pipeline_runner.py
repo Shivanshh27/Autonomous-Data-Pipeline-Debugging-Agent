@@ -152,9 +152,11 @@ def run_pipeline(file_path):
     # Step 7: Run recovery only when configured rules can apply
     recovery_result = {
         "attempted": False,
+        "status": "NOT_NEEDED",
         "decisions": [],
         "recovery_log": [],
         "validation": None,
+        "post_recovery_validation": None,
         "output_path": None
     }
 
@@ -202,16 +204,68 @@ def run_pipeline(file_path):
             df,
             {column: rule}
         )
+        # Post-recovery validation
+        post_validation = validate_recovery(df, recovered_df)
+        recovery_result["post_recovery_validation"] = post_validation
+
+        # Update overall status if recovery failed
+        if post_validation["status"] == "FAILED":
+            overall_status = "FAILED"
+            failed_checks.append({
+                "check": "post_recovery",
+                "column": column,
+                "status": "FAILED",
+                "message": post_validation["message"]
+            })
 
         validation_result = validate_recovery(df, recovered_df)
 
+        post_recovery_schema_results = validate_schema(
+            recovered_df,
+            expected_schema
+        )
+
+        post_recovery_missing_results = validate_missing_values(
+            recovered_df,
+            threshold=5.0
+        )
+
+        post_recovery_failed_checks = [
+            result
+            for result in (
+                post_recovery_schema_results
+                + post_recovery_missing_results
+            )
+            if result["status"] == "FAILED"
+        ]
+
+        post_recovery_status = (
+            "PASSED"
+            if not post_recovery_failed_checks
+            else "FAILED"
+        )
+
         output_path = "data/processed/customers_recovered.csv"
         saved_path = save_recovered_data(recovered_df, output_path)
+
+        if (
+            validation_result["status"] == "IMPROVED"
+            and validation_result["schema_valid"]
+        ):
+            recovery_result["status"] = "SUCCESS"
+        else:
+            recovery_result["status"] = "FAILED"
 
         recovery_result["attempted"] = True
         recovery_result["recovery_log"].extend(recovery_log)
         recovery_result["validation"] = validation_result
         recovery_result["output_path"] = saved_path
+        recovery_result["post_recovery_validation"] = {
+    "status": post_recovery_status,
+    "schema_results": post_recovery_schema_results,
+    "missing_results": post_recovery_missing_results,
+    "failed_checks": post_recovery_failed_checks
+}
 
         logger.info("Recovery execution completed")
 
