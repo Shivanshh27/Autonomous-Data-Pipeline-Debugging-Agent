@@ -354,3 +354,34 @@ def test_pipeline_blocks_recovery_when_required_column_is_missing(
 
     assert len(report_city_decisions) == 1
     assert report_city_decisions[0]["decision"] == "BLOCKED"
+
+def test_recovery_success_but_pipeline_validation_still_fails(tmp_path):
+    import pandas as pd
+    from src.pipeline_runner import run_pipeline
+
+    input_file = tmp_path / "customers.csv"
+
+    df = pd.DataFrame({
+        "customer_id": ["C101", None, "C103"],
+        "age": [22, 25, 24],
+        "city": [None, "Indore", "Jabalpur"]
+    })
+
+    df.to_csv(input_file, index=False)
+
+    result = run_pipeline(str(input_file))
+
+    recovery_result = result["recovery_result"]
+
+    # Recovery operation should succeed.
+    assert recovery_result["attempted"] is True
+    assert recovery_result["status"] == "SUCCESS"
+
+    # Overall pipeline should still fail because customer_id has a missing value.
+    assert result["status"] == "FAILED"
+
+    # Post-recovery validation should independently report failure.
+    assert (
+        recovery_result["post_recovery_validation"]["status"]
+        == "FAILED"
+    )

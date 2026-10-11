@@ -204,20 +204,8 @@ def run_pipeline(file_path):
             df,
             {column: rule}
         )
-        # Post-recovery validation
-        post_validation = validate_recovery(df, recovered_df)
-        recovery_result["post_recovery_validation"] = post_validation
 
-        # Update overall status if recovery failed
-        if post_validation["status"] == "FAILED":
-            overall_status = "FAILED"
-            failed_checks.append({
-                "check": "post_recovery",
-                "column": column,
-                "status": "FAILED",
-                "message": post_validation["message"]
-            })
-
+        # Compare original and recovered data
         validation_result = validate_recovery(df, recovered_df)
 
         post_recovery_schema_results = validate_schema(
@@ -261,11 +249,11 @@ def run_pipeline(file_path):
         recovery_result["validation"] = validation_result
         recovery_result["output_path"] = saved_path
         recovery_result["post_recovery_validation"] = {
-    "status": post_recovery_status,
-    "schema_results": post_recovery_schema_results,
-    "missing_results": post_recovery_missing_results,
-    "failed_checks": post_recovery_failed_checks
-}
+            "status": post_recovery_status,
+            "schema_results": post_recovery_schema_results,
+            "missing_results": post_recovery_missing_results,
+            "failed_checks": post_recovery_failed_checks
+        }
 
         logger.info("Recovery execution completed")
 
