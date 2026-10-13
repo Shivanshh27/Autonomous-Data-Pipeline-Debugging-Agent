@@ -52,11 +52,11 @@ def run_pipeline(file_path):
         "city": "str"
     }
     recovery_rules = {
-    "city": {
-        "strategy": "fill_value",
-        "value": "Unknown"
+        "city": {
+            "strategy": "fill_value",
+            "value": "Unknown"
+        }
     }
-}
     # Step 3: Run schema validation
     schema_results = validate_schema(df, expected_schema)
 

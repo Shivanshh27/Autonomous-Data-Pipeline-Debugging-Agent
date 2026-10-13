@@ -385,3 +385,45 @@ def test_recovery_success_but_pipeline_validation_still_fails(tmp_path):
         recovery_result["post_recovery_validation"]["status"]
         == "FAILED"
     )
+
+def test_json_report_includes_diagnosis_evidence(tmp_path, monkeypatch):
+    import json
+    import pandas as pd
+    from src.pipeline_runner import run_pipeline
+
+    input_file = tmp_path / "customers.csv"
+
+    df = pd.DataFrame({
+        "customer_id": ["C101", None, "C103"],
+        "age": [22, 25, 24],
+        "city": ["Bhopal", "Indore", "Jabalpur"]
+    })
+
+    df.to_csv(input_file, index=False)
+
+    # Keep generated files inside pytest's temporary directory.
+    monkeypatch.chdir(tmp_path)
+
+    run_pipeline(str(input_file))
+
+    report_file = tmp_path / "reports" / "pipeline_report.json"
+
+    assert report_file.exists()
+
+    with report_file.open("r", encoding="utf-8") as file:
+        report = json.load(file)
+
+    diagnoses = report["diagnoses"]
+
+    customer_diagnosis = next(
+        diagnosis
+        for diagnosis in diagnoses
+        if diagnosis["column"] == "customer_id"
+    )
+
+    evidence = customer_diagnosis["evidence"]
+
+    assert evidence["missing_count"] == 1
+    assert evidence["missing_percentage"] == 33.33
+    assert evidence["threshold"] == 5.0
+    assert evidence["threshold_exceeded"] is True

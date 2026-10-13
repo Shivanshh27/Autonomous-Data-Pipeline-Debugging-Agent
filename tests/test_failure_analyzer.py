@@ -54,3 +54,27 @@ def test_generates_recommended_action():
     assert diagnoses[0]["likely_cause"]
     assert diagnoses[0]["recommended_action"]
     assert diagnoses[0]["automatic_recovery"] is False
+
+def test_diagnosis_includes_evidence():
+    from src.failure_analyzer import analyze_missing_values
+
+    missing_results = [
+        {
+            "column": "customer_id",
+            "missing_count": 3,
+            "missing_percentage": 30.0,
+            "threshold": 5.0,
+            "status": "FAILED"
+        }
+    ]
+
+    diagnoses = analyze_missing_values(missing_results)
+
+    assert len(diagnoses) == 1
+
+    evidence = diagnoses[0]["evidence"]
+
+    assert evidence["missing_count"] == 3
+    assert evidence["missing_percentage"] == 30.0
+    assert evidence["threshold"] == 5.0
+    assert evidence["threshold_exceeded"] is True

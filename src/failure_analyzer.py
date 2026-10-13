@@ -43,7 +43,13 @@ def analyze_missing_values(missing_results):
             "severity": "HIGH" if missing_percentage >= 20 else "MEDIUM",
             "likely_cause": likely_cause,
             "recommended_action": recommended_action,
-            "automatic_recovery": False
+            "automatic_recovery": False,
+            "evidence": {
+                "missing_count": missing_count,
+                "missing_percentage": missing_percentage,
+                "threshold": threshold,
+                "threshold_exceeded": missing_percentage > threshold
+            }
         }
 
         diagnoses.append(diagnosis)
