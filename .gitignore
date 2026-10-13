@@ -52,3 +52,4 @@ data/processed/*_recovery_test.csv
 
 # Generated reports
 reports/*.json
+data/raw/*_recovery_test.csv
