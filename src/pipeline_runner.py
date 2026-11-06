@@ -13,7 +13,7 @@ from src.recovery_engine import (
     save_recovered_data,
     decide_recovery_action
 )
-def run_pipeline(file_path):
+def run_pipeline(file_path, db_path=None):
     logger = get_logger()
     logger.info("Pipeline execution started")
     logger.info(f"Input dataset: {file_path}")
@@ -278,12 +278,12 @@ def run_pipeline(file_path):
     run_id = save_pipeline_run(
         status=overall_status,
         total_failed_checks=len(failed_checks),
-        dataset_path=file_path
+        dataset_path=file_path,
+        db_path=db_path
     )
 
-    # Analyze execution history
-
-    history_analysis = analyze_pipeline_history()
+    # Analyze execution history using the same database
+    history_analysis = analyze_pipeline_history(db_path=db_path)
 
     pipeline_result["history_analysis"] = history_analysis
     pipeline_result["run_id"] = run_id

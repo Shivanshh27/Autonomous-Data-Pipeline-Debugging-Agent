@@ -2,18 +2,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import create_engine, select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from src.database import DATABASE_PATH, engine
+from src.database import DATABASE_URL, engine
 from src.models import Base, PipelineRun
 
 
-def _get_engine(db_path=None):
+def _get_engine(db_path=None) -> Engine:
+    """
+    Return the PostgreSQL engine for normal application usage.
+    Use a separate SQLite database when a custom db_path is provided,
+    primarily for isolated tests.
+    """
     if db_path is None:
-        database_path = Path.cwd() / "data" / "processed" / "failure_history.db"
-    else:
-        database_path = Path(db_path)
+        return engine
 
+    database_path = Path(db_path)
     database_path.parent.mkdir(
         parents=True,
         exist_ok=True,
@@ -26,29 +31,30 @@ def _get_engine(db_path=None):
         connect_args={"check_same_thread": False},
     )
 
+
 def initialize_database(db_path=None):
-    database_path = (
-        Path(db_path)
-        if db_path is not None
-        else Path.cwd() / "data" / "processed" / "failure_history.db"
-    )
+    """
+    Initialize the pipeline history table.
 
-    database_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
+    Normal application usage targets PostgreSQL.
+    A custom db_path targets an isolated SQLite database.
+    """
     database_engine = _get_engine(db_path)
 
-    Base.metadata.create_all(
-        bind=database_engine,
-        tables=[PipelineRun.__table__],
-        checkfirst=True,
-    )
+    try:
+        Base.metadata.create_all(
+            bind=database_engine,
+            tables=[PipelineRun.__table__],
+            checkfirst=True,
+        )
+    finally:
+        if db_path is not None:
+            database_engine.dispose()
 
-    database_engine.dispose()
+    if db_path is not None:
+        return str(Path(db_path))
 
-    return str(database_path)
+    return DATABASE_URL
 
 
 def save_pipeline_run(
@@ -77,7 +83,8 @@ def save_pipeline_run(
             return pipeline_run.run_id
 
     finally:
-        database_engine.dispose()
+        if db_path is not None:
+            database_engine.dispose()
 
 
 def get_pipeline_history(db_path=None):
@@ -110,4 +117,5 @@ def get_pipeline_history(db_path=None):
             ]
 
     finally:
-        database_engine.dispose()
+        if db_path is not None:
+            database_engine.dispose()

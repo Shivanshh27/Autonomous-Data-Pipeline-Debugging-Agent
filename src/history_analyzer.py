@@ -1,7 +1,7 @@
 from src.failure_history import get_pipeline_history
 
 
-def analyze_pipeline_history(db_path="data/processed/failure_history.db"):
+def analyze_pipeline_history(db_path=None):
     history = get_pipeline_history(db_path)
 
     if not history:

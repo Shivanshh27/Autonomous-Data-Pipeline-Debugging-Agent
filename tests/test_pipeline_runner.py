@@ -178,9 +178,14 @@ def test_pipeline_saves_run_to_database(tmp_path, monkeypatch):
     # Is test ka output temporary directory mein rahega.
     monkeypatch.chdir(tmp_path)
 
-    result = pipeline_runner.run_pipeline(str(input_path))
+    db_path = str(tmp_path / "history.db")
 
-    history = get_pipeline_history()
+    result = pipeline_runner.run_pipeline(
+        str(input_path),
+        db_path=db_path
+    )
+
+    history = get_pipeline_history(db_path)
 
     assert result["status"] == "FAILED"
     assert "run_id" in result
@@ -203,7 +208,12 @@ def test_pipeline_includes_history_analysis(tmp_path):
 
     df.to_csv(csv_file, index=False)
 
-    result = run_pipeline(str(csv_file))
+    db_path = str(tmp_path / "history.db")
+
+    result = run_pipeline(
+        str(csv_file),
+        db_path=db_path
+    )
 
     assert "history_analysis" in result
     assert result["history_analysis"]["total_runs"] >= 1

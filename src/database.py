@@ -1,21 +1,25 @@
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
-PROJECT_ROOT = Path.cwd()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-DATABASE_PATH = PROJECT_ROOT / "data" / "processed" / "failure_history.db"
+load_dotenv(PROJECT_ROOT / ".env")
 
-DATABASE_URL = f"sqlite:///{DATABASE_PATH.as_posix()}"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
-
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is missing. Configure it in the project root .env file."
+    )
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(
